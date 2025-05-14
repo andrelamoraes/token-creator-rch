@@ -17,7 +17,7 @@ COPY . .
 RUN npm run build
 
 # Set environment variables
-ENV REACT_APP_API_URL=http://localhost:3000
+ENV REACT_APP_API_URL=http://18.188.184.52:3000
 
 # Use a lightweight web server to serve the built application
 FROM nginx:alpine
