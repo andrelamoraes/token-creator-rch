@@ -1,6 +1,6 @@
 import useSWR, { mutate } from "swr";
 
-const API_URL = process.env.REACT_APP_API_URL;  
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000";  
 console.log("API_URL", API_URL);
 
 if (!API_URL) {
