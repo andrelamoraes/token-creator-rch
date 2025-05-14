@@ -16,6 +16,7 @@
     "@types/react-dom": "^19.1.2",
     "@types/react-router-dom": "^5.3.3",
     "autoprefixer": "^10.4.21",
+    "axios": "^1.9.0",
     "ethers": "^6.13.7",
     "postcss": "^8.5.3",
     "react": "^19.1.0",
@@ -32,7 +33,7 @@
     "zustand": "^5.0.3"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "PORT=3001 react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
@@ -54,5 +55,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
   }
 }

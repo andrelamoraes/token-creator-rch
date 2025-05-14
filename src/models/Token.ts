@@ -1,9 +1,8 @@
 
 export interface Token {
+    ownerAddress: string; 
     name: string;
     symbol: string;
-    decimal: number;
-    totalSupply: number;
-    description: string;
-    image: string;
+    initialSupply: number;
+    decimals: number;
   }

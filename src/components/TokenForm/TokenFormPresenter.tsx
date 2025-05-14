@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTokenService } from "../../services/tokenService"; 
 import { toast } from "react-toastify";
 import { MetaMaskInpageProvider } from "@metamask/providers";
-import { ethers } from "ethers"; // <-- importante
+import { ethers } from "ethers";
 
 declare global {
   interface Window {
@@ -16,12 +16,8 @@ declare global {
 const tokenSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   symbol: z.string().min(1, "Símbolo é obrigatório"),
-  decimal: z.number().min(0, "Decimal deve ser um número positivo"),
-  totalSupply: z.number().min(0, "Total Supply deve ser um número positivo"),
-  description: z.string().optional(),
-  image: z
-    .any()
-    .refine((file) => file instanceof FileList && file.length > 0, "Imagem é obrigatória")
+  decimals: z.number().min(0, "Decimal deve ser um número positivo"),
+  initialSupply: z.number().min(0, "Total Supply deve ser um número positivo"),
 });
 
 export const TokenFormPresenter = () => {
@@ -30,15 +26,15 @@ export const TokenFormPresenter = () => {
   const {
     register,
     handleSubmit,
-    watch,
-    formState: { errors },
+    formState: { errors, isValid },
   } = useForm<TokenFormData>({
     resolver: zodResolver(tokenSchema),
+    mode: "onChange", // Validação em tempo real
   });
 
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState("");
+  const [tokenAddress, setTokenAddress] = useState<string | null>(null); // Estado para armazenar o tokenAddress
   const { postToken } = useTokenService();
 
   const connectWallet = async () => {
@@ -63,14 +59,22 @@ export const TokenFormPresenter = () => {
   const disconnectWallet = () => {
     setConnected(false);
     setWalletAddress("");
+    setTokenAddress(null); // Limpa o tokenAddress ao desconectar
     toast.info("Carteira desconectada.");
   };
 
   const onSubmit = async (data: TokenFormData) => {
     const toastId = toast.loading("Criando token...");
-    
+
+    // Adiciona o walletAddress ao campo ownerAddress
+    const dataWithOwnerAddress = {
+      ...data,
+      ownerAddress: walletAddress,
+    };
+
     try {
-      await postToken(data);
+      const response = await postToken(dataWithOwnerAddress);
+      setTokenAddress(response.tokenAddress); // Armazena o tokenAddress no estado
       toast.update(toastId, {
         render: "Token criado com sucesso",
         type: "success",
@@ -86,19 +90,9 @@ export const TokenFormPresenter = () => {
       });
     }
   };
+
   const styleInput =
     "bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500";
-
-  const selectedImage = watch("image");
-
-  useEffect(() => {
-    if (selectedImage && selectedImage.length > 0) {
-      const file = selectedImage[0];
-      const url = URL.createObjectURL(file);
-      setImagePreview(url);
-      return () => URL.revokeObjectURL(url);
-    }
-  }, [selectedImage]);
 
   return (
     <form
@@ -124,9 +118,10 @@ export const TokenFormPresenter = () => {
           </button>
         )}
         {connected && (
-          <p className="text-sm text-right mt-1 text-gray-600">
-            {walletAddress}
-          </p>
+          <div className="text-sm text-right mt-1 text-gray-600">
+            <p>Endereço da Carteira: {walletAddress}</p>
+            {tokenAddress && <p className="text-green-600">Endereço do Token Criado: {tokenAddress}</p>} {/* Exibe o tokenAddress em verde se existir */}
+          </div>
         )}
       </div>
 
@@ -145,70 +140,32 @@ export const TokenFormPresenter = () => {
       </div>
 
       <div>
-        <label className="block font-semibold">Decimal</label>
-        <input {...register("decimal", { valueAsNumber: true })} className={styleInput} type="number" />
-        {errors.decimal && <p className="text-red-500">{errors.decimal.message}</p>}
+        <label className="block font-semibold">Decimais</label>
+        <input
+          {...register("decimals", { valueAsNumber: true })}
+          className={styleInput}
+          type="number"
+          placeholder="18"
+          readOnly
+          value={18}
+        />
+        {errors.decimals && <p className="text-red-500">{errors.decimals.message}</p>}
       </div>
 
       <div>
-        <label className="block font-semibold">Total Supply</label>
-        <input {...register("totalSupply", { valueAsNumber: true })} className={styleInput} type="number" />
-        {errors.totalSupply && <p className="text-red-500">{errors.totalSupply.message}</p>}
-      </div>
-
-      <div>
-        <label className="block font-semibold">Descrição</label>
-        <textarea {...register("description")} className={styleInput + " h-64"} />
-        {errors.description && <p className="text-red-500">{errors.description.message}</p>}
-      </div>
-
-      <div>
-        <label className="block font-semibold">Imagem</label>
-        <div className="relative w-full h-64">
-          {imagePreview && (
-            <img
-              src={imagePreview}
-              alt="Prévia da Imagem"
-              className="object-contain w-full h-full rounded-lg p-2"
-            />
-          )}
-          <label
-            htmlFor="dropzone-file"
-            className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-40 rounded-lg opacity-70 hover:opacity-90 cursor-pointer transition-all"
-          >
-            <div className="flex flex-col items-center justify-center">
-              <svg
-                className="w-8 h-8 mb-2 text-white"
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 20 16"
-              >
-                <path
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5A5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"
-                />
-              </svg>
-              <p className="text-white font-semibold text-sm">Upload Image</p>
-            </div>
-            <input
-              {...register("image")}
-              id="dropzone-file"
-              className="hidden"
-              type="file"
-              accept="image/*"
-            />
-          </label>
-        </div>
-        {errors.image?.message && <p className="text-red-500 mt-2">{String(errors.image.message)}</p>}
+        <label className="block font-semibold">Quantidade Inicial</label>
+        <input {...register("initialSupply", { valueAsNumber: true })} className={styleInput} type="number" />
+        {errors.initialSupply && <p className="text-red-500">{errors.initialSupply.message}</p>}
       </div>
 
       <button
         type="submit"
-        className="col-span-2 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 max-w-sm mx-auto"
+        className={`col-span-2 py-2 px-4 rounded max-w-sm mx-auto ${
+          !isValid || !connected
+            ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+            : "bg-blue-500 text-white hover:bg-blue-600"
+        }`}
+        disabled={!isValid || !connected} // Desabilita o botão se o formulário for inválido ou a carteira não estiver conectada
       >
         Criar Token
       </button>
