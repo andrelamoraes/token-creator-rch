@@ -1,32 +1,39 @@
-# Use a Node.js base image
-FROM node:18-alpine
+# Build stage
+FROM node:18-alpine as build
 
-# Set the working directory in the container
+# Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json to the working directory
+# Copy package files
 COPY package.json package-lock.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci
 
-# Copy the rest of the application code to the working directory
+# Copy application code
 COPY . .
 
-# Build the React application
+# Build the application
 RUN npm run build
 
-# Set environment variables
-ENV REACT_APP_API_URL=http://3.139.94.130:3000/api
+# Runtime stage
+FROM node:18-alpine
 
-# Use a lightweight web server to serve the built application
-FROM nginx:alpine
+# Install serve for a lightweight static file server
+RUN npm install -g serve
 
-# Copy the built application to the Nginx HTML directory
-COPY --from=0 /app/build /usr/share/nginx/html
+# Set working directory
+WORKDIR /app
 
-# Expose port 80 to the outside world
-EXPOSE 80
+# Copy build files from build stage
+COPY --from=build /app/build ./build
 
-# Start Nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Set environment variables (can be overridden at runtime)
+ENV PORT=3001
+ENV REACT_APP_API_URL=http://api:3000
+
+# Expose the port the app runs on
+EXPOSE 3001
+
+# Start the app
+CMD ["serve", "-s", "build", "-l", "3001"]

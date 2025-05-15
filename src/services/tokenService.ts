@@ -1,6 +1,6 @@
 import useSWR, { mutate } from "swr";
 
-const API_URL = "http://3.139.94.130:3000";  
+const API_URL = "http://api:3000";  
 console.log("API_URL", API_URL);
 
 if (!API_URL) {
